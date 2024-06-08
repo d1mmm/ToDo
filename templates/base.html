@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Board</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 20px;
+            margin-bottom: 20px;
+        }
+        .container-second {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: 20px;
+        }
+        .box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .button-container {
+            position: absolute;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        .popup-header {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .popup-body {
+            margin-bottom: 20px;
+        }
+        .popup-close {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .popup-close:hover {
+            background-color: #0056b3;
+        }
+        .popup-save {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .popup-save:hover {
+            background-color: #218838;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .context-menu {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        .context-menu ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        .context-menu ul li {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .context-menu ul li:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Task Board</h1>
+    <div class="container">
+        <div class="box">To Do
+            <div class="container-second">
+                <div class="box">Task</div>
+                <div class="box">Description</div>
+                <div class="box">From Date</div>
+                <div class="box">Due Date</div>
+
+                {% for item in todo_tasks %}
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'ToDo')">{{ item.task }}</div>
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'ToDo')">{{ item.description }}</div>
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'ToDo')">{{ item.from_date }}</div>
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'ToDo')">{{ item.due_date }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="context-menu" id="context-menu">
+            <ul>
+                <li onclick="moveRecord()">Move</li>
+                <li onclick="deleteRecord()">Delete</li>
+            </ul>
+        </div>
+
+        <div class="box">Done
+            <div class="container-second">
+                <div class="box">Task</div>
+                <div class="box">Description</div>
+                <div class="box">From Date</div>
+                <div class="box">Due Date</div>
+                {% for item in done_tasks %}
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'Done')">{{ item.task }}</div>
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'Done')">{{ item.description }}</div>
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'Done')">{{ item.from_date }}</div>
+                <div oncontextmenu="showContextMenu(event, this, {{ item.id }}, 'Done')">{{ item.due_date }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button class="button" onclick="openPopup()">New Task</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closePopup()"></div>
+    <div class="popup" id="popup">
+        <div class="popup-header">New Task</div>
+        <div class="popup-body">
+            <div class="form-group">
+                <label for="task">Task Title</label>
+                <input type="text" id="task" name="task-title">
+            </div>
+            <div class="form-group">
+                <label for="description">Task Description</label>
+                <textarea id="description" name="task-desc" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="from_date">From Date</label>
+                <input type="date" id="from_date" name="from-date">
+            </div>
+            <div class="form-group">
+                <label for="due_date">Due Date</label>
+                <input type="date" id="due_date" name="due-date">
+            </div>
+        </div>
+        <button class="popup-close" onclick="closePopup()">Close</button>
+        <button class="popup-save" onclick="saveTask()">Save</button>
+    </div>
+
+    <script>
+        const contextMenu = document.getElementById('context-menu');
+        selected = null
+        function showContextMenu(event, element, id, table) {
+            event.preventDefault();
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${event.pageX}px`;
+            contextMenu.style.top = `${event.pageY}px`;
+            selected = {table: table, id: id}
+
+
+            document.addEventListener('click', hideContextMenu);
+        }
+
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+            document.removeEventListener('click', hideContextMenu);
+        }
+
+        function openPopup() {
+            document.getElementById('popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function moveRecord() {
+            fetch('/move_task', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(selected)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log(data.message);
+            } else {
+                console.log('Failed to send ID');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+        }
+
+        function deleteRecord() {
+            fetch('/delete_task', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(selected)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log(data.message);
+            } else {
+                console.log('Failed to send ID');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+        }
+
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function saveTask() {
+            const task = document.getElementById('task').value;
+            const description = document.getElementById('description').value;
+            const from_date = document.getElementById('from_date').value;
+            const due_date = document.getElementById('due_date').value;
+
+            const taskData = {
+                task: task,
+                description: description,
+                from_date: from_date,
+                due_date: due_date
+            };
+
+            fetch('/save_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(taskData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    closePopup();
+                } else {
+                    alert('Failed to save task');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving task');
+            });
+        }
+    </script>
+</body>
+</html>
+
